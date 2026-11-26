@@ -62,7 +62,8 @@ Seeds & 2, sharing initialisation and batch order with the clean AE \\
 \end{tabular}
 \end{table}
 
-\paragraph{Comparison.} The fixed classifier is the Q1(a) CNN (seed 0, LR \res{q3.clf.lr}, trained on clean images, frozen; reused).
+\paragraph{Comparison.} The fixed classifier is the Q1(a) CNN configuration (seed 0, LR \res{q3.clf.lr}, trained on clean
+images, frozen). \restext{q3clf}
 It is evaluated on clean, corrupted, Gaussian-blurred corrupted (blur $\sigma=\res{q3.blur}$ chosen by validation MSE, so
 also label-free), clean-AE-reconstructed and DAE-reconstructed test images~\cite{vincent2008extracting}. Two ceilings, each
 autoencoder applied to \emph{clean} images, separate information loss from the classifier's penalty for smooth
@@ -97,7 +98,7 @@ ceiling: DAE($x$) & \res{q3.cls.daeclean.acc} & \res{q3.cls.daeclean.conf} & \re
 
 \begin{figure}[t]
 \centering
-\resfig{fig_q3_3_denoising_examples.png}{\linewidth}{2.2in}\\[2pt]
+\resfig{fig_q3_3_denoising_examples.png}{0.9\linewidth}{2.0in}\\[2pt]
 \resfig{fig_q3_4_severity.png}{0.85\linewidth}{1.8in}
 \caption{Top: validation examples (clean, corrupted, blur, clean AE, DAE). Bottom (supplementary): test accuracy of the
 fixed CNN against noise severity; the DAE was trained only at $\sigma=\res{q3.sigma}$.}
@@ -152,4 +153,7 @@ best untrained-encoder references.}
 \label{fig:q3c}
 \end{figure}
 
-\noindent\textbf{Result.} The decision is that reconstruction quality and class information \textbf{\res{q3.decc}}. \restext{q3c}
+\noindent\textbf{Result.} The decision is that reconstruction quality and class information \textbf{\res{q3.decc}}.
+\res{q3.decnote} \restext{q3c}
+
+\restext{q3cextra}

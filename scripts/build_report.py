@@ -221,7 +221,8 @@ def q1(defs, d: Path, figs):
     write_text("q1a", qa.replace("Q1(a)\n", "", 1).split("\n\n"))
     write_text("q1b", qb.split("\n\n"))
     figs += ["fig_a0_permutation_examples.png", "fig_a1_curves_factorial.png", "fig_a2_curves_capacity.png",
-             "fig_a3_capacity_and_factorial.png", "fig_b1_memorisation.png"]
+             "fig_a3_capacity_and_factorial.png", "fig_a3_capacity_and_factorial_report.png", "fig_b1_memorisation.png"]
+    defs.set("q1.CNN.seed0test", pct(s["test_q1a"]["CNN"][0], 2))
     env = d / "environment_used.json"
     if env.exists():
         e = json.loads(env.read_text())
@@ -264,8 +265,23 @@ def q2(defs, d: Path, figs):
             defs.set(f"q2.tr.{cond}.d{dist}", f2(tr.loc[cond, f"pairs_kept_d={dist}"]))
     for key in ("a", "b", "c", "link"):
         write_text(f"q2{key}", [s["conclusion"][key]])
+    # Further reading of Tab. 9 (not part of the pre-registered rule): how graded is the retention?
+    tiles = s["tile_sizes"]
+    Rs = [s["retention_R"].get(f"tile{t}") for t in tiles]
+    gaps = [acc[f"CNN|tile{t}"].mean() - acc[f"MLP-M|tile{t}"].mean() for t in tiles]
+    extra = ""
+    if all(r is not None for r in Rs) and all(a > b for a, b in zip(Rs, Rs[1:])):
+        extra = ("Further reading of Tab. 9: the loss is graded rather than all-or-nothing (R = "
+                 + ", ".join(f"{r:.2f}" for r in Rs) + " for t = " + ", ".join(str(t) for t in tiles) + ")"
+                 + (", and the CNN stays well ahead of the MLP at every tile size (gap "
+                    + ", ".join(pp(g) for g in gaps) + " pp)" if min(gaps) > 0.05 else "")
+                 + f". Most of the benefit survives {tiles[0]}-px tiles and little survives {tiles[-1]}-px tiles, so "
+                 "the spatial structure the CNN relies on spans intermediate scales: larger than its 3x3 filters "
+                 "but smaller than the whole image.")
+    write_text("q2cextra", [extra])
     figs += ["fig_q2_0_conditions.png", "fig_q2_1_curves_clean.png", "fig_q2_2_first_layer_weights.png",
-             "fig_q2_4_val_curves_all.png", "fig_q2_5_tile_curve.png", "fig_q2_6_reliability.png",
+             "fig_q2_4_val_curves_all.png", "fig_q2_5_tile_curve.png", "fig_q2_5_tile_curve_report.png",
+             "fig_q2_6_reliability.png",
              "fig_q2_7_confidence_hist.png", "fig_q2_8_per_class.png", "fig_q2_9_confusion_cnn.png"]
 
 
@@ -320,7 +336,36 @@ def q3(defs, d: Path, figs):
         defs.set(f"q3.ci.{key}", f"[{pp(lo)}, {pp(hi)}]")
     defs.set("q3.rho.lin", f2(s["spearman_linear"]) if s["spearman_linear"] is not None else "n/a")
     defs.set("q3.rho.knn", f2(s["spearman_knn"]) if s["spearman_knn"] is not None else "undefined")
-    defs.set("q3.decc", esc(s["decision_c"].lower()))
+    # Apply the pre-registered rule to the exact Spearman value. With 4 encoders, Spearman is a rational number
+    # (1 - 6*sum(d^2)/60); the notebook compared its floating-point value (e.g. 0.7999999999999999) with 0.8.
+    rho = s["spearman_linear"]
+    dec_c = s["decision_c"]
+    note_c = ""
+    if rho is not None:
+        rho_exact = round(rho, 9)
+        dec_c = "AGREE" if rho_exact >= 0.8 else ("DISAGREE" if rho_exact <= 0 else "PARTIALLY AGREE")
+        if dec_c != s["decision_c"]:
+            note_c = (f"(The notebook printed ``{s['decision_c'].lower()}'' because it compared the floating-point value "
+                      f"{rho!r} with the threshold 0.8; with four encoders the exact Spearman value is "
+                      f"{rho_exact:g}, which meets the pre-registered rule $\\rho\\geq0.8$.)")
+    defs.set("q3.decc", esc(dec_c.lower()))
+    defs.set("q3.decnote", note_c)
+    s["conclusion"]["c"] = s["conclusion"]["c"].replace(f"Decision: they {s['decision_c']}.",
+                                                        f"Decision: they {dec_c}.")
+    # Where the fixed classifier came from
+    src = s["classifier"].get("source") or ""
+    q1sum = d.parent / "q1_outputs" / "results_summary.json"
+    q1acc = json.loads(q1sum.read_text())["test_q1a"]["CNN"][0] if q1sum.exists() else None
+    clean_acc = float(c.iloc[0]["acc_mean"])
+    if src.startswith("reused"):
+        clf_txt = "It was loaded from the Q1(a) run cache."
+    else:
+        clf_txt = ("Because the Q1 run cache was not available in the Q3 session, the notebook retrained this "
+                   f"classifier with the identical Q1(a) code, seed, learning-rate grid and selection rule (it again "
+                   f"selected LR {s['classifier']['lr']:g}). Its clean test accuracy is {100 * clean_acc:.2f}%"
+                   + (f", against {100 * q1acc:.2f}% for the Q1(a) copy; the difference comes from GPU "
+                      "non-determinism." if q1acc is not None else "."))
+    write_text("q3clf", [clf_txt])
     for key, r in s["representations"].items():
         name, inp = key.split("|")
         slugs = [rep_slug(name)] + (["aesel"] if name == f"AE-{s['selected_d']}" else [])
@@ -333,6 +378,30 @@ def q3(defs, d: Path, figs):
                          f"{100 * r[probe]:.1f}" + (f"$\\pm${100 * sdv:.1f}" if finite(sdv) else ""))
     for key in ("a", "b", "c"):
         write_text(f"q3{key}", [s["conclusion"][key]])
+    # Further reading of Tab. 14 (not part of the pre-registered rule): separate width from reconstruction training
+    R_ = s["representations"]
+    bn = s["bottlenecks"]
+    sel = s["selected_d"]
+    try:
+        rnd = [R_[f"random encoder d={b}|clean"]["linear_probe"] for b in bn]
+        aes = [R_[f"AE-{b}|clean"]["linear_probe"] for b in bn]
+        ae_sel, dae = R_[f"AE-{sel}|clean"], R_[f"DAE-{sel}|clean"]
+        parts = []
+        if all(x < y for x, y in zip(rnd, rnd[1:])) and all(x < y for x, y in zip(aes, aes[1:])):
+            parts.append("Untrained encoders of the same widths show the same ordering ("
+                         + " < ".join(f"{100 * v:.1f}%" for v in rnd) + "), so the agreement across AE-"
+                         + "/".join(str(b) for b in bn) + " largely reflects bottleneck width, not what reconstruction "
+                         "training adds.")
+        if dae["test_mse_clean"] > ae_sel["test_mse_clean"] and dae["linear_probe"] > ae_sel["linear_probe"]:
+            parts.append(f"The only comparison that holds width fixed (d = {sel}) points the other way: the DAE "
+                         f"reconstructs worse than AE-{sel} (MSE {dae['test_mse_clean']:.5f} vs "
+                         f"{ae_sel['test_mse_clean']:.5f}) yet its representation carries more class information "
+                         f"({100 * dae['linear_probe']:.1f}% vs {100 * ae_sel['linear_probe']:.1f}%). Better "
+                         "reconstruction is therefore not what makes a representation more informative about the class.")
+        extra = ("Further reading of Tab. 14: " + " ".join(parts)) if parts else ""
+    except KeyError:
+        extra = ""
+    write_text("q3cextra", [extra])
     figs += ["fig_q3_1_ae_training.png", "fig_q3_2_reconstructions.png", "fig_q3_3_denoising_examples.png",
              "fig_q3_4_severity.png", "fig_q3_5_recon_vs_probe.png"]
 

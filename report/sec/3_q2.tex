@@ -88,7 +88,7 @@ tile 4  & \res{q2.tr.tile4.same}  & \res{q2.tr.tile4.d1}  & \res{q2.tr.tile4.d2}
 
 \begin{figure}[t]
 \centering
-\resfig{fig_q2_0_conditions.png}{0.78\linewidth}{2.3in}
+\resfig{fig_q2_0_conditions.png}{0.62\linewidth}{1.85in}
 \caption{The same training images under each condition.}
 \label{fig:q2cond}
 \end{figure}
@@ -113,8 +113,9 @@ Part & Condition & MLP-M & CNN & Gap & $R$ \\
 
 \begin{figure}[t]
 \centering
-\resfig{fig_q2_5_tile_curve.png}{0.92\linewidth}{1.9in}
-\caption{Test accuracy as the global arrangement is removed (dashed: fixed permutation of part (b)).}
+\resfig{fig_q2_5_tile_curve_report.png}{0.92\linewidth}{1.9in}
+\caption{Test accuracy as the global arrangement is removed (dashed: fixed permutation of part (b); error bars: $\pm$1
+sd over seeds). Drawn from \texttt{results\_summary.json} by \texttt{scripts/make\_figures.py}.}
 \label{fig:q2tile}
 \end{figure}
 
@@ -143,7 +144,7 @@ CNN & perm & \res{q2.CNN.perm.confc} & \res{q2.CNN.perm.confw} & \res{q2.CNN.per
 \begin{figure*}[t]
 \centering
 \resfig{fig_q2_6_reliability.png}{0.95\textwidth}{1.5in}\\[2pt]
-\resfig{fig_q2_7_confidence_hist.png}{0.66\textwidth}{2.2in}
+\resfig{fig_q2_7_confidence_hist.png}{0.58\textwidth}{1.95in}
 \caption{Q2 test-set confidence analysis. Top: reliability diagrams per condition. Bottom: confidence of correct vs.\
 wrong predictions (clean, $t{=}8$, permuted). Per-class accuracy and CNN confusion matrices are in
 \texttt{results/q2\_outputs/fig\_q2\_8*}, \texttt{fig\_q2\_9*}.}
@@ -157,6 +158,6 @@ were generated from Tabs.~\ref{tab:q2test}--\ref{tab:q2conf} by the pre-register
 
 \noindent\textbf{(b)} \restext{q2b}
 
-\noindent\textbf{(c)} \restext{q2c}
+\noindent\textbf{(c)} \restext{q2c} \restext{q2cextra}
 
 \noindent\textbf{Linking the three experiments.} \restext{q2link}

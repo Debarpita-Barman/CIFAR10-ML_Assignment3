@@ -1,7 +1,7 @@
 \section{Reproducibility}
 \label{sec:repro}
 
-\paragraph{Repository contents.} The repository at \RepoURL\ (commit \texttt{\CommitHash}) contains the three notebooks
+\paragraph{Repository contents.} The repository (link and commit hash on page 1) contains the three notebooks
 (\texttt{notebooks/}), the parameter files (\texttt{configs/q*.yaml}), the environment files (\texttt{environment.yml},
 \texttt{requirements.txt}, plus \texttt{requirements.lock.txt} with the exact package versions of the reported run), the scripts,
 and \texttt{results/}. \texttt{results/} holds the saved split, every CSV/JSON table, every figure, the executed notebooks
@@ -23,7 +23,11 @@ cd report && latexmk -pdf main.tex
 \end{verbatim}
 \end{small}
 \texttt{run\_all.sh} executes Q1, Q2 and Q3 in that order with \texttt{papermill}, injecting \texttt{configs/q*.yaml} and the roll
-number. Q2 and Q3 reuse Q1's cached runs. On Colab, each notebook can be run directly, with output folders on Google Drive (see
+number. Q2 and Q3 reuse Q1's cached runs when they are present. The reported run was executed on Google Colab
+(one notebook per session, the settings in \texttt{configs/}); Q2 loaded its 20 Q1 runs from the cache, while Q3
+retrained its classifier (Sec.~\ref{sec:q3}). Q1 was run with the first revision of its notebook, which differs from
+\texttt{notebooks/} only in lacking the final cell that records the environment; that cell was run by hand at the end
+of the session (see \texttt{results/executed/}). On Colab, each notebook can be run directly, with output folders on Google Drive (see
 \texttt{README.md}). \texttt{scripts/make\_split.py} regenerates the split on its own and checks it against the saved file.
 
 \begin{table}[t]

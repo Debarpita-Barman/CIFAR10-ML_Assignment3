@@ -1,0 +1,9 @@
+Optimisation / underfitting (H3, H2): the parameter-matched MLP-M reaches 99.9\% training accuracy (eval mode, final epoch; training loss 0.017) but 55.7\% validation accuracy at its best epoch. It fits its own training data, so its poor CIFAR-10 accuracy is a generalisation failure, not a failure of optimisation or of capacity to fit.
+
+Capacity (H2): widening the MLP 34x (MLP-S to MLP-XL) changes validation accuracy by +3.8 pp (+0.8 pp per doubling of parameters), while MLP-XL fits 100.0\% of its training data. The CNN with MLP-M's parameter count differs from MLP-M by +32.7 pp. At the observed trend the MLP would need about 42 more doublings of parameters (x3.9e+12) to close that gap. Capacity does not explain the gap.
+
+Spatial inductive bias (H1): permuting pixels changes MLP-M by -0.5 pp (within run-to-run noise, as expected for a permutation-invariant model) and the CNN by -35.9 pp. The CNN's advantage over the MLP goes from +32.7 pp on real images to -2.7 pp on permuted images (interaction -35.5 pp), with parameters, FLOPs, data, optimiser and tuning effort held fixed.
+
+Conclusion: the evidence supports H1 and is inconsistent with H2 and H3. The MLP is not short of capacity and is not hard to optimise: it fits the training set but generalises poorly. A model of the same size and training budget that builds in locality and weight sharing does much better, and loses that advantage when the spatial structure is removed. The MLP's weakness on CIFAR-10 is therefore its lack of a spatial inductive bias.
+
+Test set (evaluated once after all choices): MLP-M 55.1\%, CNN 87.8\%, MLP-M-perm 54.8\%, CNN-perm 52.3\%; MLP-S/L/XL 54.4\%/58.0\%/58.7\%. Test-set interaction -35.2 pp (validation -35.5 pp), so the conclusion carries over to unseen data.

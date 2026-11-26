@@ -21,6 +21,7 @@ scripts/run_all.sh    runs Q1 -> Q2 -> Q3 with papermill (one GPU)
 scripts/make_split.py regenerates the split from the roll number and checks it against the saved one
 scripts/check_results.py  checks that results/ is complete and prints headline numbers
 scripts/build_report.py   fills the LaTeX report from results/ (numbers, tables, figures, commit hash)
+scripts/make_figures.py   redraws two report figures from the saved tables (no training needed)
 results/              outputs of the reported run (committed; trained checkpoints in */runs/ are not)
   q1_outputs/split_indices.npz   the saved split
   q*_outputs/*.csv|json|png      every reported table, number and figure
@@ -69,6 +70,7 @@ Runs are cached in `results/q*_outputs/runs/`, so an interrupted `run_all.sh` re
 
 ```bash
 python scripts/check_results.py                       # everything present?
+python scripts/make_figures.py                        # redraw the two report figures
 git add -A && git commit -m "Final results" && git push
 python scripts/build_report.py --name "<Your Name>" --roll "<ROLL_NUMBER>" \
     --repo "https://github.com/<user>/<repo>"          # reads the commit hash from git
@@ -90,6 +92,21 @@ results the report was built from.
 - [ ] results committed and pushed; the repository is accessible to the evaluators
 - [ ] `build_report.py` run with name, roll number and repository URL; page 1 shows all four, including the commit hash
 - [ ] no red **??** left in `report/main.pdf`; at most 10 pages excluding references
+
+## Notes on the reported run
+
+- All three notebooks were run on Google Colab (Tesla T4), one notebook per session, with the settings in `configs/`.
+- **Q1** was run with the first revision of `notebooks/Q1_MLP_CIFAR10.ipynb`. It differs from the version here only in
+  lacking the final cell that records `environment_used.json` and `pip_freeze.txt`; that cell was run by hand at the end
+  of the session. The executed notebook in `results/executed/` is exactly what ran.
+- **Q2** loaded its 20 clean/permuted runs from Q1's run cache (`results/q2_outputs/table_q2_run_sources.csv`).
+- **Q3** did not find Q1's run cache in its session, so it retrained the fixed CNN classifier with the identical Q1(a)
+  code, seed and LR selection (same selected LR; clean test accuracy 87.65% vs 87.67% for Q1's copy).
+- **Q3(c) decision:** the notebook printed "partially agree" because it compared the floating-point Spearman value
+  0.7999999999999999 with the threshold 0.8. With four encoders the exact value is 0.8, which meets the pre-registered
+  rule, so the report states "agree" and explains this. No measured number changes.
+- **Two figures were redrawn** from the saved tables by `scripts/make_figures.py` because their labels overlapped
+  (`fig_a3_capacity_and_factorial_report.png`, `fig_q2_5_tile_curve_report.png`). The originals remain alongside them.
 
 ## Notes
 
