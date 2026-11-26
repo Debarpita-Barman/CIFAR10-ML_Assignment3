@@ -1,0 +1,16 @@
+# Minimum versions. The exact versions of the reported run are written to requirements.lock.txt
+# (copied from results/q1_outputs/pip_freeze.txt by scripts/build_report.py).
+# For a CUDA build of PyTorch on Windows, install torch/torchvision first from https://pytorch.org.
+torch>=2.3
+torchvision>=0.18
+numpy>=1.26
+pandas>=2.1
+scipy>=1.11
+scikit-learn>=1.4
+matplotlib>=3.8
+jupyter
+ipykernel
+nbformat
+nbconvert
+papermill>=2.5
+pyyaml

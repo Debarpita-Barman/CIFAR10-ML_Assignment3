@@ -1,0 +1,8 @@
+model,role,input,specification,parameters,params_vs_CNN,MACs_per_image,MACs_per_param
+MLP-S,capacity sweep,original,MLP 3072 -> 128 -> 128 -> 128 -> 10 (Linear+BN+ReLU per hidden layer),428426,0.379,427264,1.0
+MLP-M,matched comparison,original,MLP 3072 -> 305 -> 305 -> 305 -> 10 (Linear+BN+ReLU per hidden layer),1128815,0.999,1126060,1.0
+MLP-L,capacity sweep,original,MLP 3072 -> 1024 -> 1024 -> 1024 -> 10 (Linear+BN+ReLU per hidden layer),5262346,4.655,5253120,1.0
+MLP-XL,capacity sweep; reused in Q1(b),original,MLP 3072 -> 2048 -> 2048 -> 2048 -> 10 (Linear+BN+ReLU per hidden layer),14718986,13.021,14700544,1.0
+CNN,matched comparison,original,"CNN conv3x3 [32,64] pool | [128,128] pool | [256,256] pool | GAP | Linear 256->10 (BN+ReLU after each conv)",1130378,1.0,133007872,117.7
+MLP-M-perm,permutation control,permuted pixels,MLP 3072 -> 305 -> 305 -> 305 -> 10 (Linear+BN+ReLU per hidden layer),1128815,0.999,1126060,1.0
+CNN-perm,permutation control,permuted pixels,"CNN conv3x3 [32,64] pool | [128,128] pool | [256,256] pool | GAP | Linear 256->10 (BN+ReLU after each conv)",1130378,1.0,133007872,117.7

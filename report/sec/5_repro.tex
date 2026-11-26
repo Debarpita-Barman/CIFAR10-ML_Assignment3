@@ -1,0 +1,73 @@
+\section{Reproducibility}
+\label{sec:repro}
+
+\paragraph{Repository contents.} The repository at \RepoURL\ (commit \texttt{\CommitHash}) contains the three notebooks
+(\texttt{notebooks/}), the parameter files (\texttt{configs/q*.yaml}), the environment files (\texttt{environment.yml},
+\texttt{requirements.txt}, plus \texttt{requirements.lock.txt} with the exact package versions of the reported run), the scripts,
+and \texttt{results/}. \texttt{results/} holds the saved split, every CSV/JSON table, every figure, the executed notebooks
+(the final logs) and \texttt{environment\_used.json} for each question. Trained checkpoints ($\approx$1.2\,GB) are not committed;
+the notebooks regenerate them.
+
+\paragraph{Exact commands.} On a Linux machine with one NVIDIA GPU:
+\begin{small}
+\begin{verbatim}
+git clone <repo> && cd <repo>
+git checkout <commit>
+conda env create -f environment.yml
+conda activate cifar10-study
+bash scripts/run_all.sh <ROLL_NUMBER>
+python scripts/check_results.py
+python scripts/build_report.py --name "<name>" \
+   --roll "<roll>" --repo "<url>"
+cd report && latexmk -pdf main.tex
+\end{verbatim}
+\end{small}
+\texttt{run\_all.sh} executes Q1, Q2 and Q3 in that order with \texttt{papermill}, injecting \texttt{configs/q*.yaml} and the roll
+number. Q2 and Q3 reuse Q1's cached runs. On Colab, each notebook can be run directly, with output folders on Google Drive (see
+\texttt{README.md}). \texttt{scripts/make\_split.py} regenerates the split on its own and checks it against the saved file.
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.5pt}
+\caption{Every setting needed to reproduce the reported numbers (also in \texttt{configs/}).}
+\label{tab:hparams}
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.66\linewidth}@{}}
+\toprule
+Split & 45k/5k stratified, \texttt{random\_state}=\res{splitstate} \\
+Classifiers & AdamW, LR $\in$\{3e-4,1e-3,3e-3\} (val), wd 0.05, cosine, 30 ep., batch 128, fp16, 3 seeds \\
+Q1(b) & MLP-XL, 40\% symmetric noise, AdamW 1e-3 const., wd 0, 150 ep.; eval 4$\times$/epoch for 10 epochs, then every epoch \\
+Q2(c) & tile sizes 16/8/4, per-image orders seeded by (roll, $t$, split); LR re-selected per condition \\
+AEs & $d\in$\{16,128,1024\}, AdamW 1e-3, wd 1e-4, cosine, 30 ep., batch 128, 2 seeds \\
+DAE & Gaussian $\sigma$=0.2, noise redrawn per batch; blur $\sigma\in$\{0.5,\dots,2\} (val MSE) \\
+Probes & linear: AdamW 2e-3, 40 ep., batch 512, wd$\in$\{0,0.01,0.1,0.5\}; $k$-NN: $k\in$\{10,50\} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.5pt}
+\caption{Where every reported number comes from (under \texttt{results/}).}
+\label{tab:files}
+\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{0.7\linewidth}@{}}
+\toprule
+Tab.~\ref{tab:models} & \texttt{q1\_outputs/table\_a1\_model\_specs.csv} \\
+Tabs.~\ref{tab:q1res}--\ref{tab:q1ev} & \texttt{q1\_outputs/table\_a3\_*.csv}, \texttt{table\_final\_test\_q1a.csv}, \texttt{results\_summary.json} \\
+Tabs.~\ref{tab:q1b}--\ref{tab:q1btest} & \texttt{q1\_outputs/table\_b1\_*.csv}, \texttt{table\_b2\_*.csv}, \texttt{table\_final\_test\_q1b.csv} \\
+Tabs.~\ref{tab:q2models}--\ref{tab:q2conf} & \texttt{q2\_outputs/table\_q2\_*.csv}, \texttt{results\_summary.json} \\
+Tabs.~\ref{tab:q3a}--\ref{tab:q3c} & \texttt{q3\_outputs/table\_q3*.csv}, \texttt{results\_summary.json} \\
+Figures & \texttt{q*\_outputs/fig\_*.png} (made by the notebook cells named in the captions) \\
+Text in Results & \texttt{q1\_outputs/interpretation.txt}, \texttt{q2/q3\_outputs/conclusion.txt} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Determinism.} Seeds fix the split, the initialisations, the batch orders, the permutations and all noise. Remaining
+run-to-run variation comes from non-deterministic cuDNN kernels and fp16 accumulation, so a rerun on different hardware
+reproduces the numbers to within the reported seed spread, not bit-for-bit. The reported values are the ones in
+\texttt{results/}.
+
+\paragraph{Limitations.} (i) No augmentation and short budgets, so absolute accuracies are below standard CIFAR-10 numbers.
+This is deliberate, to keep the comparisons controlled. (ii) Three seeds for classifiers and two for autoencoders, which
+give wide confidence intervals. (iii) Conclusions about the CNN refer to this global-average-pooled architecture.
+(iv) Tile shuffling creates artificial edges at tile borders. (v) The fixed classifier in Q3(b) was trained on sharp
+images, so its accuracy on reconstructions mixes information loss with distribution shift; the ceiling rows separate the two.
+(vi) Linear and $k$-NN probes measure \emph{accessible} class information only.

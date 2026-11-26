@@ -1,0 +1,18 @@
+# Parameters injected into notebooks/Q3_Autoencoders_CIFAR10.ipynb. CFG_A, LR_GRID and TRAIN_EVAL_SUBSET must
+# equal configs/q1.yaml so that the fixed CNN classifier is loaded from results/q1_outputs/runs.
+DATA_ROOT: data
+Q1_OUT_DIR: results/q1_outputs
+OUT_DIR: results/q3_outputs
+N_TRAIN: 45000
+N_VAL: 5000
+CFG_A: {epochs: 30, batch_size: 128, weight_decay: 0.05, schedule: cosine}
+LR_GRID: [0.0003, 0.001, 0.003]
+TRAIN_EVAL_SUBSET: 5000
+BOTTLENECKS: [16, 128, 1024]
+CFG_AE: {epochs: 30, batch_size: 128, lr: 0.001, weight_decay: 0.0001}
+N_SEEDS_AE: 2
+NOISE_SIGMA: 0.2
+BLUR_SIGMA_GRID: [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+SEVERITY_SWEEP: [0.05, 0.1, 0.2, 0.3]
+PROBE_CFG: {epochs: 40, batch_size: 512, lr: 0.002, wd_grid: [0.0, 0.01, 0.1, 0.5]}
+KNN_K_GRID: [10, 50]

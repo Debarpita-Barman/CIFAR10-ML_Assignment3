@@ -1,0 +1,40 @@
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage{url}
+\setlist{nosep,leftmargin=1.2em}
+\raggedbottom
+\captionsetup{font=small,skip=4pt}
+\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
+\setlength{\floatsep}{6pt plus 2pt minus 2pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 2pt}
+
+% ---------------------------------------------------------------------------------------------
+% Result placeholders. Every reported number is \res{key}; scripts/build_report.py defines the
+% keys from the notebook outputs. Undefined keys print as a red ?? so a draft cannot be mistaken
+% for a finished report.
+% ---------------------------------------------------------------------------------------------
+\newcommand{\pending}{\textcolor{red}{\textbf{??}}}
+\newcommand{\res}[1]{\ifcsname res@#1\endcsname\csname res@#1\endcsname\else\pending\fi}
+\newcommand{\restext}[1]{\IfFileExists{generated/txt_#1.tex}{\input{generated/txt_#1.tex}}%
+  {\textcolor{red}{[Pending: this paragraph is generated from the notebook outputs by \texttt{scripts/build\_report.py}.]}}}
+\newcommand{\resinput}[2]{\IfFileExists{generated/#1.tex}{\input{generated/#1.tex}}{#2}}
+% \resfig{file}{width}{placeholder height}
+\newcommand{\resfig}[3]{\IfFileExists{figures/#1}{\includegraphics[width=#2]{figures/#1}}%
+  {{\setlength{\fboxsep}{0pt}\fbox{\parbox[c][#3][c]{\dimexpr#2-2\fboxrule\relax}{\centering\color{red}\small Figure pending\\
+  \texttt{\detokenize{#1}}}}}}}
+\IfFileExists{generated/results.tex}{\input{generated/results.tex}}{}
+\IfFileExists{generated/info.tex}{\input{generated/info.tex}}{%
+  \newcommand{\StudentName}{\pending}\newcommand{\StudentRoll}{\pending}%
+  \newcommand{\RepoURL}{\pending}\newcommand{\CommitHash}{\pending}}
+
+\newcommand{\pmv}{$\pm$}
+\newcommand{\Hone}{H$_1$}
+\newcommand{\Htwo}{H$_2$}
+\newcommand{\Hthree}{H$_3$}

@@ -1,0 +1,174 @@
+\section{Q1: Why does an MLP perform poorly on CIFAR-10?}
+\label{sec:q1}
+
+\subsection{(a) Missing spatial inductive bias vs.\ capacity vs.\ optimisation}
+
+\paragraph{Hypotheses.} \textbf{\Hone\ (chosen reason): no spatial inductive bias.} The MLP's first layer gives every pixel
+an independent weight to every hidden unit. It has no notion that neighbouring pixels are related (locality), and a
+feature learned at one position does not transfer to another (no weight sharing). With 45k images it should therefore
+\emph{overfit} with position-specific templates rather than underfit. \textbf{\Htwo: insufficient capacity.}
+\textbf{\Hthree: optimisation difficulty.}
+
+\paragraph{Design.} The core is a 2$\times$2 factorial with architecture \{MLP-M, CNN\} at matched parameters crossed with
+input \{original, fixed pixel permutation\}. The permutation is one shuffle of the 1024 pixel positions (RGB values move
+together), applied identically to training, validation and test images. It keeps the information in each image, the
+labels, the parameter count, the FLOPs and the optimiser unchanged, and removes only spatial structure. An MLP is
+indifferent to it: the shuffle is absorbed by permuting the columns of its first weight matrix, and i.i.d.\ initialisation
+is permutation-invariant. A width sweep (MLP-S/M/L/XL, 34$\times$ parameters, fixed depth) tests \Htwo. Eval-mode
+accuracy and loss on a fixed 5k training subset, logged every epoch, test \Htwo/\Hthree.
+
+\paragraph{Fairness.} A comparison is fair here if the models differ only in architecture and have the same opportunity
+to learn: (i) the same data, split and normalisation, with no augmentation; (ii) parameters matched within 0.2\%;
+(iii) the same budget of 30 epochs at batch 128 (10,560 AdamW steps), with the same cosine schedule, weight decay 0.05, loss,
+BatchNorm and ReLU; (iv) equal tuning effort, with the LR chosen from \{3e-4, 1e-3, 3e-3\} and the early-stopping epoch
+chosen on validation for \emph{every} model and condition, including the permuted ones; (v) 3 seeds per model.
+Compute per image is \emph{not} matched: weight sharing gives the CNN $\approx$118$\times$ more MACs
+(Tab.~\ref{tab:models}). The permutation control rules this confound out, because CNN-perm has exactly the CNN's
+parameters \emph{and} FLOPs.
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.5pt}
+\caption{Q1(a) predictions, written before running.}
+\label{tab:q1pred}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Measurement & \Hone\ bias & \Htwo\ capacity & \Hthree\ optimisation \\
+\midrule
+MLP train accuracy & high, big gap & low & low, loss stalls \\
+Widening MLP 34$\times$ & small gain & large gain & --- \\
+CNN at equal params & much better & similar & maybe better \\
+Permutation: CNN & large drop & no change & no change \\
+Permutation: MLP & no change & no change & no change \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.5pt}
+\caption{Q1(a) results (mean$\pm$sd over 3 seeds). LR: selected on validation. Train: eval-mode accuracy on a fixed 5k
+training subset at the final epoch. Val/Test: best-validation checkpoint. Accuracies in \%.}
+\label{tab:q1res}
+\begin{tabular}{@{}lrlrrr@{}}
+\toprule
+Model & Params & LR & Train & Val & \textbf{Test} \\
+\midrule
+MLP-S      & \res{q1.MLP-S.params}      & \res{q1.MLP-S.lr}      & \res{q1.MLP-S.trainfit}      & \res{q1.MLP-S.val}      & \res{q1.MLP-S.test} \\
+MLP-M      & \res{q1.MLP-M.params}      & \res{q1.MLP-M.lr}      & \res{q1.MLP-M.trainfit}      & \res{q1.MLP-M.val}      & \res{q1.MLP-M.test} \\
+MLP-L      & \res{q1.MLP-L.params}      & \res{q1.MLP-L.lr}      & \res{q1.MLP-L.trainfit}      & \res{q1.MLP-L.val}      & \res{q1.MLP-L.test} \\
+MLP-XL     & \res{q1.MLP-XL.params}     & \res{q1.MLP-XL.lr}     & \res{q1.MLP-XL.trainfit}     & \res{q1.MLP-XL.val}     & \res{q1.MLP-XL.test} \\
+CNN        & \res{q1.CNN.params}        & \res{q1.CNN.lr}        & \res{q1.CNN.trainfit}        & \res{q1.CNN.val}        & \res{q1.CNN.test} \\
+\midrule
+MLP-M-perm & \res{q1.MLP-M-perm.params} & \res{q1.MLP-M-perm.lr} & \res{q1.MLP-M-perm.trainfit} & \res{q1.MLP-M-perm.val} & \res{q1.MLP-M-perm.test} \\
+CNN-perm   & \res{q1.CNN-perm.params}   & \res{q1.CNN-perm.lr}   & \res{q1.CNN-perm.trainfit}   & \res{q1.CNN-perm.val}   & \res{q1.CNN-perm.test} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\caption{Q1(a) hypothesis tests: paired differences in accuracy (percentage points), on validation and on test.
+Pooled seed-to-seed sd of validation accuracy: \res{q1.ev.seedsd}\,pp.}
+\label{tab:q1ev}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Quantity & Val & Test \\
+\midrule
+CNN $-$ MLP-M (equal parameters) & \res{q1.ev.cnnminusmlp.val} & \res{q1.ev.cnnminusmlp.test} \\
+MLP-XL $-$ MLP-S (34$\times$ parameters) & \res{q1.ev.capgain.val} & \res{q1.ev.capgain.test} \\
+Permutation effect on MLP-M & \res{q1.ev.permmlp.val} & \res{q1.ev.permmlp.test} \\
+Permutation effect on CNN & \res{q1.ev.permcnn.val} & \res{q1.ev.permcnn.test} \\
+CNN-perm $-$ MLP-M-perm & \res{q1.ev.permgap.val} & \res{q1.ev.permgap.test} \\
+Interaction (CNN $-$ MLP perm effect) & \res{q1.ev.interaction.val} & \res{q1.ev.interaction.test} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\resfig{fig_a1_curves_factorial.png}{0.88\textwidth}{2.45in}
+\caption{Q1(a) training (eval mode, 5k subset) and validation accuracy and loss for the matched comparison and the
+permutation controls (mean$\pm$sd over 3 seeds; dotted line: mean best-validation epoch).}
+\label{fig:q1curves}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\resfig{fig_a3_capacity_and_factorial.png}{0.8\textwidth}{2.1in}
+\caption{Left: validation accuracy of the MLP width sweep against parameter count, with the CNN and CNN-perm at MLP-M's
+size. Right: the 2$\times$2 permutation factorial; dots are individual seeds. Training/validation curves of the
+capacity sweep are in \texttt{results/q1\_outputs/fig\_a2\_curves\_capacity.png}.}
+\label{fig:q1cap}
+\end{figure*}
+
+\paragraph{Results.} Tables~\ref{tab:q1res} and \ref{tab:q1ev} and Figs.~\ref{fig:q1curves} and \ref{fig:q1cap} give the
+measurements. The interpretation below was generated from them by the pre-registered rules in the Q1 notebook (\S6):
+
+\restext{q1a}
+
+\subsection{(b) Is structure learned before memorisation?}
+
+\paragraph{Setting.} 40\% of the 45k training labels are replaced by a class drawn uniformly from the nine \emph{wrong}
+classes. The draw is seeded and fixed for the whole run; validation labels stay clean. A corrupted label is unrelated to its
+image, so fitting it cannot generalise. The model is \textbf{MLP-XL} (14.7M parameters, $\approx$330 per training
+example; reused from (a)), trained with AdamW at a \emph{constant} LR of 1e-3, \emph{no} weight decay and 150 epochs. Weight
+decay and early stopping counteract memorisation, and an LR schedule would add phase changes of its own to the trajectory. A clean-label run with the
+same initialisation and batch order serves as the control~\cite{zhang2017understanding,arpit2017closer}.
+
+\paragraph{Measurements} (whole training set in eval mode, 4 times per epoch for the first 10 epochs, then every epoch):
+clean-train accuracy; \emph{memorisation rate}, the fraction of corrupted examples predicted as their assigned wrong label;
+the \emph{shadow rate}, the fraction predicted as a second wrong label drawn the same way but never shown to the model. Without
+example-specific memorisation the two labels are exchangeable, so the \emph{memorisation excess} (rate $-$ shadow) gets a paired $z$-score. We also record
+the true-class accuracy on corrupted examples (chance 10\%), validation accuracy, and per example the epoch from which it
+stays fitted.
+
+\paragraph{Decision rule (pre-registered).} Onset $t_\text{mem}$ is the first evaluation point after which the excess stays
+significant ($z>3$). We conclude that ``structure comes before memorisation'' if, at $t_\text{mem}$, validation accuracy has
+covered $\geq$50\% of its rise from chance to its peak \emph{and} true-class accuracy on corrupted examples exceeds 20\%.
+
+\begin{figure*}[t]
+\centering
+\resfig{fig_b1_memorisation.png}{\textwidth}{2.3in}
+\caption{Q1(b): MLP-XL with 40\% corrupted labels. (a) Accuracy measures; the dashed line is the clean-label control's
+validation accuracy. (b) Losses on the clean and corrupted subsets. (c) Fraction of examples stably fitted by each epoch.
+Vertical lines: peak validation accuracy (grey) and memorisation onset (red). The $x$-axis is linear below 1 epoch and logarithmic above.}
+\label{fig:q1b}
+\end{figure*}
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.2pt}
+\caption{Q1(b) trajectory (\%). $\dagger$: peak validation accuracy; $\ast$: memorisation onset. ``True'': true class
+predicted on corrupted examples; ``Mem.'': assigned wrong label predicted; ``Shad.'': never-shown wrong label predicted.}
+\label{tab:q1b}
+\resinput{tab_q1b_milestones}{\begin{tabular}{@{}rrrrrrr@{}}
+\toprule
+Epoch & Val & Val (clean run) & Clean train & True & Mem. & Shad. \\
+\midrule
+\multicolumn{7}{c}{\pending\ (rows generated from \texttt{table\_b1\_*.csv})}\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\caption{Q1(b) test accuracy before and after memorisation, and the median epoch at which examples become stably fitted.}
+\label{tab:q1btest}
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Run & Checkpoint & Epoch & Val & \textbf{Test} \\
+\midrule
+40\% noise & early-stopped (val) & \res{q1b.test.noisy.early.ep} & \res{q1b.test.noisy.early.val} & \res{q1b.test.noisy.early.test} \\
+40\% noise & final & \res{q1b.test.noisy.final.ep} & \res{q1b.test.noisy.final.val} & \res{q1b.test.noisy.final.test} \\
+clean & early-stopped (val) & \res{q1b.test.clean.early.ep} & \res{q1b.test.clean.early.val} & \res{q1b.test.clean.early.test} \\
+clean & final & \res{q1b.test.clean.final.ep} & \res{q1b.test.clean.final.val} & \res{q1b.test.clean.final.test} \\
+\midrule
+\multicolumn{5}{@{}l}{Median stably-fitted epoch: clean ex.\ \res{q1b.med.clean}, corrupted ex.\ \res{q1b.med.corrupted},} \\
+\multicolumn{5}{@{}l}{same images with true labels (control run) \res{q1b.med.same}.} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Results.} Fig.~\ref{fig:q1b} and Tabs.~\ref{tab:q1b} and \ref{tab:q1btest}. Peak validation accuracy is
+\res{q1b.valpeak}\% at epoch \res{q1b.tpeak}, and memorisation onset is at epoch \res{q1b.tmem}. Pre-registered decision:
+\textbf{\res{q1b.decision}}. Generated interpretation:
+
+\restext{q1b}

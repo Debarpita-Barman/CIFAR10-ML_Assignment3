@@ -1,0 +1,13 @@
+# Parameters injected into notebooks/Q2_CNN_vs_MLP_CIFAR10.ipynb. CFG_A, LR_GRID, N_SEEDS and TRAIN_EVAL_SUBSET
+# must equal configs/q1.yaml so that the Q1(a) runs are reused from results/q1_outputs/runs.
+DATA_ROOT: data
+Q1_OUT_DIR: results/q1_outputs
+OUT_DIR: results/q2_outputs
+N_TRAIN: 45000
+N_VAL: 5000
+CFG_A: {epochs: 30, batch_size: 128, weight_decay: 0.05, schedule: cosine}
+LR_GRID: [0.0003, 0.001, 0.003]
+N_SEEDS: 3
+TRAIN_EVAL_SUBSET: 5000
+TILE_SIZES: [16, 8, 4]
+TUNE_LR_C: true

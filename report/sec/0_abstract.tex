@@ -1,0 +1,15 @@
+\begin{abstract}
+We report three controlled studies on CIFAR-10 in which every choice is made on a 5,000-image validation split
+(seeded by the roll number) and the official test set is used once, after all choices are fixed.
+\textbf{Q1:} at an identical budget and $\approx$1.13M parameters, an MLP reaches \res{q1.MLP-M.test}\% test accuracy and
+a CNN \res{q1.CNN.test}\%. A fixed pixel permutation, a capacity sweep (0.43M--14.7M parameters) and training-set fit
+separate a missing spatial inductive bias from lack of capacity and from optimisation difficulty. Under 40\% label
+noise, a 14.7M-parameter MLP reaches its peak validation accuracy at epoch \res{q1b.tpeak}, and significant
+memorisation of the corrupted labels sets in at epoch \res{q1b.tmem}.
+\textbf{Q2:} per-image random tile shuffling separates \emph{local} from \emph{global} spatial structure. With 8-px tiles the
+CNN retains \res{q2.R.tile8} of its spatial benefit; errors and calibration are also analysed.
+\textbf{Q3:} three convolutional autoencoders differing only in bottleneck width (16/128/1024); a denoising
+autoencoder recovers a fraction \res{q3.F} of the accuracy that Gaussian noise costs a fixed classifier; and the Spearman
+correlation between reconstruction quality and linear-probe class information is \res{q3.rho.lin}.
+Every predicted outcome and decision rule was written down before the corresponding experiment was run.
+\end{abstract}

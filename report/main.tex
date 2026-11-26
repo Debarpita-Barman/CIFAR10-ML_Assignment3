@@ -1,0 +1,35 @@
+% CVPR two-column report. Build: python scripts/build_report.py ... && cd report && latexmk -pdf main.tex
+\documentclass[10pt,twocolumn,letterpaper]{article}
+
+\usepackage[pagenumbers]{cvpr}   % camera-ready layout (names visible) with page numbers
+\input{preamble}
+
+\definecolor{cvprblue}{rgb}{0.21,0.49,0.74}
+\usepackage[pagebackref,breaklinks,colorlinks,allcolors=cvprblue]{hyperref}
+
+\def\confName{CVPR}
+\def\confYear{2027}
+
+\title{Inductive Bias, Memorisation and Representation Learning on CIFAR-10:\\
+Controlled Comparisons of MLPs, CNNs and Autoencoders}
+
+\author{\StudentName\\
+Roll number: \StudentRoll\\
+{\small Repository: \RepoURL}\\
+{\small Final commit: \texttt{\CommitHash}}
+}
+
+\begin{document}
+\maketitle
+\input{sec/0_abstract}
+\input{sec/1_setup}
+\input{sec/2_q1}
+\input{sec/3_q2}
+\input{sec/4_q3}
+\input{sec/5_repro}
+{
+    \small
+    \bibliographystyle{ieeenat_fullname}
+    \bibliography{refs}
+}
+\end{document}

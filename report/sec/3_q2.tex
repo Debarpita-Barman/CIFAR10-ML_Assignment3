@@ -1,0 +1,162 @@
+\section{Q2: CNN vs.\ MLP, spatial structure, and local vs.\ global information}
+\label{sec:q2}
+
+\paragraph{Reuse.} Q2 compares \textbf{MLP-M} and the \textbf{CNN} from Q1(a) (Tab.~\ref{tab:models}). Their clean-image runs
+and fixed-permutation runs were first trained in Q1(a) and are loaded from its run cache with the same seeds, LR grid and
+checkpoints, so parts (a) and (b) reuse those results. Part (c) is new.
+
+\subsection{(a) A fair comparison}
+\paragraph{Fairness criterion (fixed before any result).} Both models (1) have the same number of trainable parameters,
+within 0.2\%; (2) see identical data and normalisation, with no augmentation; (3) get an identical budget and recipe, \ie
+30 epochs at batch 128, AdamW, cosine LR, weight decay 0.05, BatchNorm and ReLU; (4) get the same LR grid, with the LR and
+early-stopping epoch chosen on validation only; and (5) are trained with 3 paired seeds. The primary outcome is mean$\pm$sd
+test accuracy, evaluated once. Compute per image is declared unmatched ($\approx$118$\times$ more MACs for the CNN) and is
+controlled by part (b).
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\caption{Q2: the compared models (both introduced in Q1(a)).}
+\label{tab:q2models}
+\begin{tabular}{@{}lrrll@{}}
+\toprule
+Model & Params & MACs & LR (clean) & Test acc.\ (clean, \%) \\
+\midrule
+MLP-M & \res{q1.MLP-M.params} & \res{q1.MLP-M.macs} & \res{q2.lr.MLP-M.clean} & \res{q2.MLP-M.clean.test} \\
+CNN   & \res{q1.CNN.params}   & \res{q1.CNN.macs}   & \res{q2.lr.CNN.clean}   & \res{q2.CNN.clean.test} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Proposed reason.} The training curves (Fig.~\ref{fig:q1curves}) show the MLP fitting its training set while
+generalising worse. Its first-layer units are whole-image, position-specific templates, while the CNN's are small local
+filters reused everywhere (Fig.~\ref{fig:q2weights}). We therefore propose: \emph{locality and weight sharing let the CNN
+exploit the correlations between neighbouring pixels with a small set of reusable local detectors, which the MLP must
+relearn separately at every position}.
+
+\begin{figure}[t]
+\centering
+\resfig{fig_q2_2_first_layer_weights.png}{\linewidth}{1.0in}
+\caption{First-layer weights. Left: the 12 largest-norm MLP-M units (each spans the whole image). Right: all 32 CNN
+$3{\times}3$ filters.}
+\label{fig:q2weights}
+\end{figure}
+
+\subsection{(b) Same pixel values, spatial structure destroyed}
+We apply the fixed global pixel permutation of Q1(a) to the training, validation and test images; every image keeps
+exactly the same multiset of RGB values (Tab.~\ref{tab:q2tr}), and both models are retrained. \textbf{Expected beforehand:}
+MLP-M unchanged within seed noise ($|\Delta|\leq$ 2 seed-sd, at least 1\,pp), because the permutation is absorbed by its
+first layer; CNN drops to about the MLP's level or below (the gap shrinks by more than half), because its $3{\times}3$ filters
+now see unrelated pixels. Parameters, FLOPs and pixel values are unchanged, so if the CNN kept its advantage, the reason
+proposed in (a) would be wrong.
+
+\subsection{(c) Local structure or global arrangement?}
+A full permutation destroys all spatial structure at once, so it cannot separate two explanations of \emph{what} the CNN
+uses. \textbf{E-local:} local patterns (edges, textures, colour blobs within a few pixels) pooled over the image, \ie a
+bag of local features~\cite{brendel2019approximating}; its global average pooling makes this plausible. \textbf{E-global:} the
+arrangement of parts across the image, \ie object shape. \textbf{Experiment:} \emph{per-image random tile shuffling} with
+tile size $t\in\{16,8,4\}$. Each image is cut into $(32/t)^2$ tiles, which are reassembled in an order drawn separately
+for each image (seeded; fixed once, not re-drawn per epoch). Pixels inside a tile keep their neighbours, while the
+global arrangement becomes random and carries no information. The test images go through the same procedure with the
+same $t$. Tab.~\ref{tab:q2tr} quantifies how much structure survives. Both models are retrained under each condition with
+the same treatment as in (a), including LR selection on validation.
+
+\paragraph{Predictions and decision rule (pre-registered).} Let the CNN's \emph{retention}
+$R(t)=\frac{\mathrm{acc}(t)-\mathrm{acc}(\text{perm})}{\mathrm{acc}(\text{clean})-\mathrm{acc}(\text{perm})}$ be the share of
+its spatial benefit that survives. E-local predicts $R(8)\geq0.5$, a CNN--MLP gap that stays large, and confident correct
+predictions. E-global predicts $R(8)<0.5$, already low at $t{=}16$. The reason proposed in (a) also predicts that the
+\emph{MLP} loses accuracy under tile shuffling (unlike under the fixed permutation), because its templates need content at
+consistent positions. Decision: E-local if $R(8)\geq0.5$ on test, otherwise E-global. A secondary check applies the
+same normalisation to the CNN's mean confidence on its correct predictions ($R_c$).
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.6pt}
+\caption{Transformations (measured on 1,000 training images). ``Same values'': identical multiset of RGB pixels per image.
+$p_d$: fraction of pixel pairs at distance $d$ that remain at distance $d$ in the same direction.}
+\label{tab:q2tr}
+\begin{tabular}{@{}lcrrrrr@{}}
+\toprule
+Condition & Same values & $p_1$ & $p_2$ & $p_4$ & $p_8$ & $p_{16}$ \\
+\midrule
+clean  & \res{q2.tr.clean.same}  & \res{q2.tr.clean.d1}  & \res{q2.tr.clean.d2}  & \res{q2.tr.clean.d4}  & \res{q2.tr.clean.d8}  & \res{q2.tr.clean.d16} \\
+perm (b) & \res{q2.tr.perm.same} & \res{q2.tr.perm.d1}   & \res{q2.tr.perm.d2}   & \res{q2.tr.perm.d4}   & \res{q2.tr.perm.d8}   & \res{q2.tr.perm.d16} \\
+tile 16 & \res{q2.tr.tile16.same} & \res{q2.tr.tile16.d1} & \res{q2.tr.tile16.d2} & \res{q2.tr.tile16.d4} & \res{q2.tr.tile16.d8} & \res{q2.tr.tile16.d16} \\
+tile 8  & \res{q2.tr.tile8.same}  & \res{q2.tr.tile8.d1}  & \res{q2.tr.tile8.d2}  & \res{q2.tr.tile8.d4}  & \res{q2.tr.tile8.d8}  & \res{q2.tr.tile8.d16} \\
+tile 4  & \res{q2.tr.tile4.same}  & \res{q2.tr.tile4.d1}  & \res{q2.tr.tile4.d2}  & \res{q2.tr.tile4.d4}  & \res{q2.tr.tile4.d8}  & \res{q2.tr.tile4.d16} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\resfig{fig_q2_0_conditions.png}{0.78\linewidth}{2.3in}
+\caption{The same training images under each condition.}
+\label{fig:q2cond}
+\end{figure}
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\caption{\textbf{Q2 test accuracy} (\%, mean$\pm$sd over 3 seeds) for MLP-M (\res{q1.MLP-M.params} params) and the CNN
+(\res{q1.CNN.params} params). Gap: CNN $-$ MLP (pp). $R$: CNN retention of its spatial benefit.}
+\label{tab:q2test}
+\begin{tabular}{@{}llrrrr@{}}
+\toprule
+Part & Condition & MLP-M & CNN & Gap & $R$ \\
+\midrule
+(a) & clean & \res{q2.MLP-M.clean.test} & \res{q2.CNN.clean.test} & \res{q2.gap.clean} & 1 \\
+(b) & fixed permutation & \res{q2.MLP-M.perm.test} & \res{q2.CNN.perm.test} & \res{q2.gap.perm} & 0 \\
+(c) & tiles, $t{=}16$ & \res{q2.MLP-M.tile16.test} & \res{q2.CNN.tile16.test} & \res{q2.gap.tile16} & \res{q2.R.tile16} \\
+(c) & tiles, $t{=}8$  & \res{q2.MLP-M.tile8.test}  & \res{q2.CNN.tile8.test}  & \res{q2.gap.tile8}  & \res{q2.R.tile8} \\
+(c) & tiles, $t{=}4$  & \res{q2.MLP-M.tile4.test}  & \res{q2.CNN.tile4.test}  & \res{q2.gap.tile4}  & \res{q2.R.tile4} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\resfig{fig_q2_5_tile_curve.png}{0.92\linewidth}{1.9in}
+\caption{Test accuracy as the global arrangement is removed (dashed: fixed permutation of part (b)).}
+\label{fig:q2tile}
+\end{figure}
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.4pt}
+\caption{\textbf{Q2 test confidence and calibration} (max-softmax; means over seeds). Conf\,c/w: mean confidence of
+correct/wrong predictions. ECE: expected calibration error (15 bins)~\cite{guo2017calibration}. AUROC: confidence as a
+detector of correct predictions.}
+\label{tab:q2conf}
+\begin{tabular}{@{}llrrrrr@{}}
+\toprule
+Model & Condition & Conf\,c & Conf\,w & ECE & AUROC & NLL \\
+\midrule
+MLP-M & clean & \res{q2.MLP-M.clean.confc} & \res{q2.MLP-M.clean.confw} & \res{q2.MLP-M.clean.ece} & \res{q2.MLP-M.clean.auroc} & \res{q2.MLP-M.clean.nll} \\
+MLP-M & tile 8 & \res{q2.MLP-M.tile8.confc} & \res{q2.MLP-M.tile8.confw} & \res{q2.MLP-M.tile8.ece} & \res{q2.MLP-M.tile8.auroc} & \res{q2.MLP-M.tile8.nll} \\
+MLP-M & perm & \res{q2.MLP-M.perm.confc} & \res{q2.MLP-M.perm.confw} & \res{q2.MLP-M.perm.ece} & \res{q2.MLP-M.perm.auroc} & \res{q2.MLP-M.perm.nll} \\
+CNN & clean & \res{q2.CNN.clean.confc} & \res{q2.CNN.clean.confw} & \res{q2.CNN.clean.ece} & \res{q2.CNN.clean.auroc} & \res{q2.CNN.clean.nll} \\
+CNN & tile 16 & \res{q2.CNN.tile16.confc} & \res{q2.CNN.tile16.confw} & \res{q2.CNN.tile16.ece} & \res{q2.CNN.tile16.auroc} & \res{q2.CNN.tile16.nll} \\
+CNN & tile 8 & \res{q2.CNN.tile8.confc} & \res{q2.CNN.tile8.confw} & \res{q2.CNN.tile8.ece} & \res{q2.CNN.tile8.auroc} & \res{q2.CNN.tile8.nll} \\
+CNN & tile 4 & \res{q2.CNN.tile4.confc} & \res{q2.CNN.tile4.confw} & \res{q2.CNN.tile4.ece} & \res{q2.CNN.tile4.auroc} & \res{q2.CNN.tile4.nll} \\
+CNN & perm & \res{q2.CNN.perm.confc} & \res{q2.CNN.perm.confw} & \res{q2.CNN.perm.ece} & \res{q2.CNN.perm.auroc} & \res{q2.CNN.perm.nll} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure*}[t]
+\centering
+\resfig{fig_q2_6_reliability.png}{0.95\textwidth}{1.5in}\\[2pt]
+\resfig{fig_q2_7_confidence_hist.png}{0.66\textwidth}{2.2in}
+\caption{Q2 test-set confidence analysis. Top: reliability diagrams per condition. Bottom: confidence of correct vs.\
+wrong predictions (clean, $t{=}8$, permuted). Per-class accuracy and CNN confusion matrices are in
+\texttt{results/q2\_outputs/fig\_q2\_8*}, \texttt{fig\_q2\_9*}.}
+\label{fig:q2conf}
+\end{figure*}
+
+\paragraph{Results and conclusion.} The CNN's confidence retention is $R_c(8)=$ \res{q2.Rc.tile8}. The paragraphs below
+were generated from Tabs.~\ref{tab:q2test}--\ref{tab:q2conf} by the pre-registered rules (Q2 notebook \S6).
+
+\noindent\textbf{(a)} \restext{q2a}
+
+\noindent\textbf{(b)} \restext{q2b}
+
+\noindent\textbf{(c)} \restext{q2c}
+
+\noindent\textbf{Linking the three experiments.} \restext{q2link}

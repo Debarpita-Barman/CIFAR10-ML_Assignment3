@@ -1,0 +1,155 @@
+\section{Q3: Convolutional autoencoders}
+\label{sec:q3}
+
+\subsection{(a) Bottleneck capacity}
+\paragraph{Architecture.} Encoder: conv$3{\times}3$(3$\to$32), then three stride-2 conv$4{\times}4$ layers
+(32$\to$64$\to$128$\to$256; 32$\to$16$\to$8$\to$4 px), each with BN and ReLU, then flattening (4096) and a \emph{linear} bottleneck
+to $d$ units. The representation is $z\in\mathbb{R}^d$. The decoder mirrors this: a linear layer from $d$ to 4096, ReLU, a reshape to
+256$\times$4$\times$4, three stride-2 transposed conv$4{\times}4$ layers (BN, ReLU), and conv$3{\times}3$(32$\to$3) with a sigmoid. Only
+$d\in\{16,128,1024\}$ changes (8$\times$ apart; 192$\times$/24$\times$/3$\times$ compression of the 3072 inputs), so the
+models differ only in the two linear layers adjacent to $z$.
+\paragraph{Training (identical for all $d$).} MSE between reconstruction and input on $[0,1]$ pixels, AdamW (LR 1e-3, weight
+decay 1e-4), cosine schedule, 30 epochs, batch 128, no labels, no augmentation, 2 seeds. Seed $k$ uses the same initialisation stream
+and batch order for every $d$. The checkpoint kept is the one with the lowest validation MSE. Convergence is checked as the change in
+validation MSE over the last 5 epochs.
+\paragraph{Selection rule (pre-registered, reconstruction error only).} We choose the lowest mean validation MSE. A smaller $d$
+within 2 pooled seed-sd of the best counts as tied, and the smaller one is then taken.
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.4pt}
+\caption{\textbf{Q3(a) autoencoders}: bottleneck, parameters, \textbf{validation} reconstruction error (MSE$\times10^{3}$
+on $[0,1]$ pixels, mean$\pm$sd over 2 seeds), PSNR, the change over the last 5 epochs ($\Delta_5$, \%), and \textbf{test}
+MSE (all three are shown; the selection uses validation only).}
+\label{tab:q3a}
+\begin{tabular}{@{}rrrrrrr@{}}
+\toprule
+$d$ & Comp. & Params & Val MSE & PSNR & $\Delta_5$ & Test MSE \\
+\midrule
+16   & \res{q3.ae16.comp}   & \res{q3.ae16.params}   & \res{q3.ae16.valmse}   & \res{q3.ae16.valpsnr}   & \res{q3.ae16.conv}   & \res{q3.ae16.testmse} \\
+128  & \res{q3.ae128.comp}  & \res{q3.ae128.params}  & \res{q3.ae128.valmse}  & \res{q3.ae128.valpsnr}  & \res{q3.ae128.conv}  & \res{q3.ae128.testmse} \\
+1024 & \res{q3.ae1024.comp} & \res{q3.ae1024.params} & \res{q3.ae1024.valmse} & \res{q3.ae1024.valpsnr} & \res{q3.ae1024.conv} & \res{q3.ae1024.testmse} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\resfig{fig_q3_2_reconstructions.png}{\linewidth}{1.8in}
+\caption{Validation images and their reconstructions by the three autoencoders (seed 0).}
+\label{fig:q3rec}
+\end{figure}
+
+\noindent\textbf{Result.} The selected model is \textbf{AE-\res{q3.sel}}. \restext{q3a}
+
+\subsection{(b) Denoising and the information the classifier needs}
+\paragraph{Corruption.} Additive Gaussian noise with $\sigma=\res{q3.sigma}$ on $[0,1]$ pixels, clipped to $[0,1]$. This noise is
+independent across pixels and high-frequency, while natural images are dominated by smooth, correlated structure, so
+reconstruction can plausibly separate the two. Occlusion, by contrast, removes information that a reconstruction could only invent.
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{3pt}
+\caption{Denoising-autoencoder training protocol (no labels used).}
+\label{tab:q3proto}
+\begin{tabular}{@{}lp{0.68\linewidth}@{}}
+\toprule
+Architecture & identical to the selected clean AE (same $d$) \\
+Input/target & $\tilde x=\mathrm{clip}(x+\sigma\epsilon,0,1)$, $\epsilon\sim\mathcal N(0,I)$ / clean $x$ \\
+Noise & redrawn every time an image is used \\
+Optimisation & MSE; AdamW 1e-3, wd 1e-4, cosine, 30 epochs, batch 128 \\
+Selection & lowest validation MSE of DAE($\tilde x_\text{val}$) vs.\ $x_\text{val}$ (fixed seeded noise) \\
+Seeds & 2, sharing initialisation and batch order with the clean AE \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Comparison.} The fixed classifier is the Q1(a) CNN (seed 0, LR \res{q3.clf.lr}, trained on clean images, frozen; reused).
+It is evaluated on clean, corrupted, Gaussian-blurred corrupted (blur $\sigma=\res{q3.blur}$ chosen by validation MSE, so
+also label-free), clean-AE-reconstructed and DAE-reconstructed test images~\cite{vincent2008extracting}. Two ceilings, each
+autoencoder applied to \emph{clean} images, separate information loss from the classifier's penalty for smooth
+reconstructions. \textbf{Decision rule:} with the recovered fraction
+$F=\frac{\mathrm{acc}(\mathrm{DAE}(\tilde x))-\mathrm{acc}(\tilde x)}{\mathrm{acc}(x)-\mathrm{acc}(\tilde x)}$, the DAE
+\emph{recovers} the information if $F\geq0.5$ and the 95\% bootstrap CI of the gain excludes 0, \emph{partially} recovers it if
+only the CI condition holds, and does \emph{not} recover it otherwise.
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.6pt}
+\caption{\textbf{Q3(b) test classification} by the fixed CNN (mean$\pm$sd over 2 AE seeds where applicable), mean
+confidence, and MSE$\times10^3$/PSNR with respect to the clean image.}
+\label{tab:q3b}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Classifier input & Acc.\ (\%) & Conf. & MSE & PSNR \\
+\midrule
+clean images & \res{q3.cls.clean.acc} & \res{q3.cls.clean.conf} & \res{q3.cls.clean.mse} & \res{q3.cls.clean.psnr} \\
+corrupted $\tilde x$ & \res{q3.cls.noisy.acc} & \res{q3.cls.noisy.conf} & \res{q3.cls.noisy.mse} & \res{q3.cls.noisy.psnr} \\
+Gaussian blur of $\tilde x$ & \res{q3.cls.blur.acc} & \res{q3.cls.blur.conf} & \res{q3.cls.blur.mse} & \res{q3.cls.blur.psnr} \\
+clean AE($\tilde x$) & \res{q3.cls.aenoisy.acc} & \res{q3.cls.aenoisy.conf} & \res{q3.cls.aenoisy.mse} & \res{q3.cls.aenoisy.psnr} \\
+\textbf{DAE($\tilde x$)} & \res{q3.cls.daenoisy.acc} & \res{q3.cls.daenoisy.conf} & \res{q3.cls.daenoisy.mse} & \res{q3.cls.daenoisy.psnr} \\
+\midrule
+ceiling: clean AE($x$) & \res{q3.cls.aeclean.acc} & \res{q3.cls.aeclean.conf} & \res{q3.cls.aeclean.mse} & \res{q3.cls.aeclean.psnr} \\
+ceiling: DAE($x$) & \res{q3.cls.daeclean.acc} & \res{q3.cls.daeclean.conf} & \res{q3.cls.daeclean.mse} & \res{q3.cls.daeclean.psnr} \\
+\midrule
+\multicolumn{5}{@{}l}{95\% bootstrap CI of the gain (pp): DAE$-\tilde x$ \res{q3.ci.daenoisy};} \\
+\multicolumn{5}{@{}l}{DAE$-$clean AE \res{q3.ci.daeae}; DAE$-$blur \res{q3.ci.daeblur}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\resfig{fig_q3_3_denoising_examples.png}{\linewidth}{2.2in}\\[2pt]
+\resfig{fig_q3_4_severity.png}{0.85\linewidth}{1.8in}
+\caption{Top: validation examples (clean, corrupted, blur, clean AE, DAE). Bottom (supplementary): test accuracy of the
+fixed CNN against noise severity; the DAE was trained only at $\sigma=\res{q3.sigma}$.}
+\label{fig:q3b}
+\end{figure}
+
+\noindent\textbf{Result.} $F=\res{q3.F}$; the decision is that denoising \textbf{\res{q3.decb}} the information the classifier needs.
+\restext{q3b}
+
+\subsection{(c) Class information vs.\ reconstruction quality}
+\paragraph{Protocol.} The representation is the frozen bottleneck $z$ (eval mode, no fine-tuning) of AE-16/128/1024 (from
+(a)) and the DAE (from (b)). For reference we also probe raw pixels (a perfect ``reconstruction'') and \emph{untrained},
+randomly initialised encoders of each width. \textbf{Linear probe}~\cite{alain2016understanding}: features are standardised
+with training statistics, then fed to multinomial logistic regression (AdamW, 40 epochs) with weight decay chosen from \{0, 0.01, 0.1, 0.5\}
+on validation. \textbf{$k$-NN probe}: cosine similarity, $k\in\{10,50\}$ chosen on validation. Probes are trained on the 45k
+split and reported on test. Reconstruction quality is the clean-image test MSE. \textbf{Decision rule:} the two
+quantities \emph{agree} if the Spearman correlation between $-$MSE and linear-probe accuracy over the four trained encoders is
+$\geq0.8$; they \emph{disagree} if it is $\leq0$, and agree partially in between.
+
+\begin{table}[t]
+\centering\footnotesize\setlength{\tabcolsep}{2.6pt}
+\caption{\textbf{Q3(c) test comparison}: reconstruction error (MSE$\times10^3$, clean test images) and class information
+(probe accuracy, \%, mean$\pm$sd over AE seeds). Bottom rows: probes on representations of \emph{noisy} images.}
+\label{tab:q3c}
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Representation & Test MSE & Linear probe & $k$-NN probe \\
+\midrule
+raw pixels (3072-d) & 0 & \res{q3.rep.raw.clean.lin} & \res{q3.rep.raw.clean.knn} \\
+untrained enc., $d{=}16$ & -- & \res{q3.rep.rand16.clean.lin} & \res{q3.rep.rand16.clean.knn} \\
+untrained enc., $d{=}128$ & -- & \res{q3.rep.rand128.clean.lin} & \res{q3.rep.rand128.clean.knn} \\
+untrained enc., $d{=}1024$ & -- & \res{q3.rep.rand1024.clean.lin} & \res{q3.rep.rand1024.clean.knn} \\
+\midrule
+AE-16 & \res{q3.rep.ae16.clean.mse} & \res{q3.rep.ae16.clean.lin} & \res{q3.rep.ae16.clean.knn} \\
+AE-128 & \res{q3.rep.ae128.clean.mse} & \res{q3.rep.ae128.clean.lin} & \res{q3.rep.ae128.clean.knn} \\
+AE-1024 & \res{q3.rep.ae1024.clean.mse} & \res{q3.rep.ae1024.clean.lin} & \res{q3.rep.ae1024.clean.knn} \\
+DAE (selected $d$) & \res{q3.rep.dae.clean.mse} & \res{q3.rep.dae.clean.lin} & \res{q3.rep.dae.clean.knn} \\
+\midrule
+selected AE, noisy input & -- & \res{q3.rep.aesel.noisy.lin} & \res{q3.rep.aesel.noisy.knn} \\
+DAE, noisy input & -- & \res{q3.rep.dae.noisy.lin} & \res{q3.rep.dae.noisy.knn} \\
+\midrule
+\multicolumn{4}{@{}l}{Spearman($-$MSE, probe): linear \res{q3.rho.lin}, $k$-NN \res{q3.rho.knn}} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\resfig{fig_q3_5_recon_vs_probe.png}{\linewidth}{2.0in}
+\caption{Test reconstruction error vs.\ test probe accuracy (circles: linear, diamonds: $k$-NN), with the raw-pixel and
+best untrained-encoder references.}
+\label{fig:q3c}
+\end{figure}
+
+\noindent\textbf{Result.} The decision is that reconstruction quality and class information \textbf{\res{q3.decc}}. \restext{q3c}

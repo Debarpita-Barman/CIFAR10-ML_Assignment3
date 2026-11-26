@@ -1,0 +1,48 @@
+\section{Common setup}
+\label{sec:setup}
+
+\paragraph{Data and split.} We use CIFAR-10~\cite{krizhevsky2009learning} (50,000 training and 10,000 test images, 10
+classes). The 50,000 training images are split \emph{once} into 45,000 train and 5,000 validation images with
+scikit-learn's \texttt{train\_test\_split} (stratified by class, \texttt{random\_state}\,=\,\res{splitstate}). The random
+state is the integer formed by all digits of the roll number, in order (seed \res{seed}). The split is exactly stratified (4,500/500 per class), shared by all three questions and saved as
+\texttt{results/q1\_outputs/split\_indices.npz}. Per-channel normalisation statistics are computed on the 45k training
+images only. Q1 and Q2 feed normalised images to the classifiers; the Q3 autoencoders work on $[0,1]$ pixels and
+normalise only when passing images to the classifier.
+
+\paragraph{Selection and test protocol.} The validation split is used for every choice: learning rate, early-stopping
+epoch, bottleneck, blur strength and probe hyperparameters. Each notebook loads the official test set only in its last
+section, after all choices are fixed, evaluates every final model once, and quotes test numbers as final results.
+Training and validation curves are reported where a question asks about training behaviour. Every predicted outcome
+and decision threshold in this report was written into the notebook before the experiment was run.
+
+\paragraph{Randomness.} Every random choice is derived from the roll-number seed. The split uses the seed directly; all
+other randomness draws from NumPy's \texttt{SeedSequence} seeded with the roll-number seed and a descriptive tag (\eg the
+pixel permutation, label noise, tile orders, test noise, run seeds and probe seeds). A run's seed index fixes both its
+initialisation stream and its mini-batch order, and is shared across models and conditions, which makes comparisons
+paired. Unless stated otherwise, results are mean$\pm$sd over seeds.
+
+\paragraph{Training.} All networks are trained with AdamW~\cite{loshchilov2019decoupled} and batch size 128, using
+mixed precision (fp16) on the GPU with the whole split held in GPU memory. Classifiers use BatchNorm~\cite{ioffe2015batch}
+and ReLU in both families. \textbf{No data augmentation is used anywhere}: crops and flips hard-code exactly the spatial
+priors that Q1 and Q2 study. Hardware and software for the reported run: \res{env.device}, Python \res{env.python},
+PyTorch \res{env.torch}, torchvision \res{env.torchvision}, CUDA \res{env.cuda}~\cite{paszke2019pytorch}.
+
+\begin{table}[t]
+\centering\small\setlength{\tabcolsep}{3pt}
+\caption{Classifiers used in Q1 and Q2. MLPs have three hidden layers (Linear--BN--ReLU) of the given width. MLP-M's
+width (305) is solved so that its parameter count matches the CNN's within 0.2\%. The CNN is six $3{\times}3$
+convolutions (32,64 | 128,128 | 256,256 channels, BN+ReLU) in three stages with $2{\times}2$ max-pooling, followed by
+global average pooling and a linear head. MACs: multiply--accumulates per image.}
+\label{tab:models}
+\begin{tabular}{@{}llrr@{}}
+\toprule
+Model & Architecture & Parameters & MACs \\
+\midrule
+MLP-S  & $3072{\to}128^{\times3}{\to}10$  & \res{q1.MLP-S.params}  & \res{q1.MLP-S.macs} \\
+MLP-M  & $3072{\to}305^{\times3}{\to}10$  & \res{q1.MLP-M.params}  & \res{q1.MLP-M.macs} \\
+MLP-L  & $3072{\to}1024^{\times3}{\to}10$ & \res{q1.MLP-L.params}  & \res{q1.MLP-L.macs} \\
+MLP-XL & $3072{\to}2048^{\times3}{\to}10$ & \res{q1.MLP-XL.params} & \res{q1.MLP-XL.macs} \\
+CNN    & 6 conv + GAP + linear           & \res{q1.CNN.params}    & \res{q1.CNN.macs} \\
+\bottomrule
+\end{tabular}
+\end{table}
