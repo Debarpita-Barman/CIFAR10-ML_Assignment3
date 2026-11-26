@@ -1,3 +1,0 @@
-model,architecture,parameters,weight_tensors,MACs_per_image,introduced_in,params_vs_CNN
-MLP-M,MLP 3072 -> 305 -> 305 -> 305 -> 10 (Linear+BN+ReLU per hidden layer),1128815,"936,960 + 93,025 + 93,025 + 3,050",1126060,Q1(a),0.9986
-CNN,"CNN conv3x3 [32,64] pool | [128,128] pool | [256,256] pool | GAP | Linear 256->10 (BN+ReLU after each conv)",1130378,"864 + 18,432 + 73,728 + 147,456 + 294,912 + 589,824 + 2,560",133007872,Q1(a),1.0
